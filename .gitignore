@@ -1,0 +1,9 @@
+# Ignore everything by default
+*
+
+# But include these specific files
+!train_3d_with_balancing.py
+!cell_3d_testing.py
+!cell_3d_testing.sub
+!cell_3d_training.sub
+!.gitignore

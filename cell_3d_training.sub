@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH --job-name=cell_3d_training_with_balancing
+#SBATCH --output=/home/akaur101/data/3d_data/training_outputs/bal_swap_fixed_3dtrain_%j.stdout
+#SBATCH --partition dept.appliedmath
+#SBATCH --gres=gpu:2
+#SBATCH --time=10:00:00
+
+#SBATCH --mail-user=akaur101@ucmerced.edu
+#SBATCH --mail-type=BEGIN
+#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=ALL
+#SBATCH --export=ALL
+
+module load anaconda3
+source activate env_pytorch
+python /home/akaur101/data/3d_data/train_3d_with_balancing.py /home/akaur101/data/3d_data/Fluo-C3DH-A549/01/ /home/akaur101/data/3d_data/Fluo-C3DH-A549/01_GT/SEG/ 30
+
+
