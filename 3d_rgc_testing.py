@@ -29,12 +29,12 @@ import torchvision.transforms.functional as TF
 from torchvision.transforms import Compose, Normalize, ToTensor
 import sys
 
-# images_path = Path("/Users/aseeskaur/Documents/Fluo-C3DH-A549/01")
-# masks_path  = Path("/Users/aseeskaur/Documents/Fluo-C3DH-A549/01_GT/SEG")
+#images_path = Path("/Users/aseeskaur/Documents/Fluo-C3DH-A549/01")
+#masks_path  = Path("/Users/aseeskaur/Documents/Fluo-C3DH-A549/01_GT/SEG")
 
 
-# image_files = images_path.glob("*.tif")
-# mask_files  = masks_path.glob("*.tif")
+#image_files = images_path.glob("*.tif")
+#mask_files  = masks_path.glob("*.tif")
 
 images_dir = sys.argv[1]
 masks_dir = sys.argv[2]
@@ -136,18 +136,60 @@ class net(nn.Module):
        
         return x9
 
+#trying to get 50 pixels from foreground to see of this is working"
+#num = 50
 
-num = 500
-centroid_df = pd.DataFrame()
+# centroid_df = pd.DataFrame()
+# foreground_coords = np.argwhere(test_mask_padded > 0)
+# selected_coords = foreground_coords[np.random.choice(len(foreground_coords), num, replace=False)]
+# centroid_df = pd.DataFrame(selected_coords, columns=['cord_x', 'cord_y', 'cord_z'])
 
 
-rand_ele      = np.random.choice(test_image_swap.flatten(), num, replace = False)
-indices       = np.argwhere(np.isin(test_image_swap, rand_ele)).tolist()
-centroids_all = random.choices(indices, k = num)
-centroid_df   = pd.DataFrame(centroids_all[0:], columns = ['cord_x', 'cord_y', 'cord_z'])
+
+num = 5000
+
+np.random.seed(67)
+
+# Randomly select voxel positions from unpadded image
+total_voxels = test_image_swap.size
+selected_indices = np.random.choice(total_voxels, num, replace=False)
+coords = np.unravel_index(selected_indices, test_image_swap.shape)
+
+centroid_df = pd.DataFrame({
+    'cord_x': coords[0],
+    'cord_y': coords[1],
+    'cord_z': coords[2]
+})
+
+
+
 centroid_df['cord_x']= centroid_df['cord_x']+40
 centroid_df['cord_y']= centroid_df['cord_y']+40
 centroid_df['cord_z']= centroid_df['cord_z']+40
+
+
+
+# ===== DEBUG SECTION =====
+print(f"\n{'='*60}")
+print(f"{'='*60}")
+print(f"Total centroids in centroid_df: {len(centroid_df)}")
+print(f"\nSample centroids (first 5):")
+print(centroid_df.head())
+
+# Check if centroids are on foreground in ground truth
+test_values = test_mask_padded[
+    centroid_df['cord_x'].values, 
+    centroid_df['cord_y'].values, 
+    centroid_df['cord_z'].values
+]
+print(f"\n centroids on foreground (GT): {(test_values > 0).sum()}/{len(centroid_df)}")
+print(f"Percentage on foreground: {(test_values > 0).sum()/len(centroid_df)*100:.1f}%")
+
+print(f"{'='*60}\n")
+# ===== END DEBUG SECTION =====
+
+
+
 
 def snaps_at_next_cent(next_cents, padded_image, padded_mask):
     image_list = []
@@ -205,13 +247,12 @@ transform = ToTensorAndNormalize3D(normalize=True)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 model  = net()
-model_path = "/data/akaur101/3d_data/checkpoints/best_model_3d_after_bal_swap_v2.pth"
+model_path = "/home/akaur101/data/3d_data/checkpoints/best_model_3d_after_bal_swap_v2.pth"
 
 checkpoint = torch.load(model_path, map_location=device)
 
 # Load only the model weights
 model.load_state_dict(checkpoint["model_state_dict"])
-
 model = model.to(device)
 model.eval()
 
@@ -253,11 +294,14 @@ while len(next_S) > 0:
         for k, data in enumerate(test_loader):
             images, masks, x_cords, y_cords, z_cords = data
             images = images.to(device = device)
-            print(images.shape)
+            #print(images.shape)
             masks = masks.to(device = device)
-            print(masks.shape)
+            #print(masks.shape)
             pred = model(images.float())
+            #print("Before sigmoid prediction: ", pred)
             final_pred = torch.sigmoid(pred)
+            #print("Final Prediction : " ,final_pred)
+            
 
             pred_numpy = final_pred.cpu().numpy()
             
@@ -281,8 +325,13 @@ while len(next_S) > 0:
             pred_temp = torch.where(torch.squeeze(final_pred) < 0.1, 0, 1) #thresholding
             if len(final_pred) == 1:
                 pred_temp = torch.where((final_pred) < 0.1, 0, 1)
+            
+            #print("Pred_temp: ", pred_temp)
 
             pred_ind = torch.argwhere(pred_temp)
+
+            #print("Pred_ind : ",  pred_ind)
+
 
             temp_ind_list = []
             for i in range(len(pred_ind)):
@@ -303,13 +352,15 @@ while len(next_S) > 0:
                 
         
                 #boundry check
-                if (40 <= x < test_image_padded.shape[2] -40 and 
+                if (40 <= x < test_image_padded.shape[0] -40 and 
                     40 <= y < test_image_padded.shape[1] - 40 and
-                    5 <= z < test_image_padded.shape[0] - 5):
+                    40 <= z < test_image_padded.shape[2] - 40):
 
                     point = (x,y,z)
+                    #print("point: ", point)
                     if point not in S:
                         S.add(point)
+                        #print("S: ", S)
                         next_S.append([x,y,z])
                         runn_cent.append([x,y,z])
 
@@ -320,7 +371,7 @@ print(f"Iterations: {counter}")
 print(f"Total centroids processed: {len(runn_cent)}")
 print(f"Total voxels in set S: {len(S)}")
 
-# Average the accumulated predictions
+#Average the accumulated predictions
 print("\nAveraging overlapping predictions...")
 averaged_prob = np.divide(probability_map, count_map, 
                           where=count_map > 0, 
@@ -329,7 +380,7 @@ averaged_prob = np.divide(probability_map, count_map,
 print(f"Voxels with predictions: {(count_map > 0).sum()}")
 print(f"Max overlaps per voxel: {count_map.max()}")
 
-# Remove padding to get back to original image size
+#Remove padding to get back to original image size
 print("\nRemoving padding...")
 final_prob = averaged_prob[40:-40, 40:-40, 40:-40]
 
@@ -343,7 +394,7 @@ binary_mask = (final_prob > threshold).astype(np.uint8)
 print(f"\nSegmented voxels (threshold={threshold}): {binary_mask.sum()}")
 
 # Save results
-output_dir = Path("/data/akaur101/3d_data/3d_segmentation_results")
+output_dir = Path("/home/akaur101/data/3d_data/3d_segmentation_results")
 output_dir.mkdir(exist_ok=True)
 
 print(f"\nSaving results to: {output_dir}")
