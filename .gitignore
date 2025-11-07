@@ -7,4 +7,5 @@
 !cell_3d_testing.sub
 !cell_3d_training.sub
 !3d_rgc_testing.py
+!3d_train_fixed_padding.py
 !.gitignore
