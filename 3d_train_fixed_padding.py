@@ -12,6 +12,7 @@ from torchvision.transforms import transforms
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose    #, Normalize, ToTensor
+import matplotlib.pyplot as plt
 
 # images_path = Path("/Users/aseeskaur/Documents/Fluo-C3DH-A549/01")
 # masks_path  = Path("/Users/aseeskaur/Documents/Fluo-C3DH-A549/01_GT/SEG")
@@ -319,27 +320,27 @@ class net(nn.Module):
         # Forward pass through the network
         
         x1 = self.conv1(image) 
-        print(x1.shape)
+       # print(x1.shape)
         x2 = self.maxpool(x1)  
-        print(x2.shape)
+        #print(x2.shape)
         
         x3 = self.conv2(x2)   
-        print(x3.shape)
+        #print(x3.shape)
         x4 = self.maxpool2(x3) 
-        print(x4.shape)
+        #print(x4.shape)
         
         x5 = self.conv3(x4)     
-        print(x5.shape)
+        #print(x5.shape)
         x6 = self.maxpool3(x5)  
-        print(x6.shape)
+        #print(x6.shape)
         
         x7 = self.conv4(x6)     
-        print(x7.shape)
+        #print(x7.shape)
         x8 = self.maxpool4(x7)  
-        print(x8.shape)
+        #print(x8.shape)
 
         x9 = self.conv5(x8)
-        print(x9.shape)
+        #print(x9.shape)
     
         return x9
 
@@ -358,6 +359,9 @@ criterion = torch.nn.BCEWithLogitsLoss()
 start_epoch = 0
 best_val_loss = float('inf')
 running_loss_list = []
+train_losses = []
+val_losses = []
+
 
 if RESUME_FROM_CHECKPOINT and CHECKPOINT_PATH and os.path.exists(CHECKPOINT_PATH):
     start_epoch, best_val_loss, running_loss_list = load_checkpoint(CHECKPOINT_PATH, model, optimizer)
@@ -379,7 +383,7 @@ for epoch in range(start_epoch, epochs):
         
         
         loss = criterion(outputs, masks.float())
-        print(loss)
+        #print(loss)
         loss.backward()
         optimizer.step()
         
@@ -393,6 +397,7 @@ for epoch in range(start_epoch, epochs):
             running_loss = 0.0
             
     epoch_loss = running_loss / len(train_dataloader)
+    train_losses.append(epoch_loss)
     print(f'Epoch [{epoch+1}/{epochs}], Training Loss: {epoch_loss}')
 
     model.eval()
@@ -405,6 +410,7 @@ for epoch in range(start_epoch, epochs):
             outputs = model(images.float())
             val_loss += criterion(outputs, masks.float()).item()
         val_loss /= len(val_dataloader)
+        val_losses.append(val_loss)
         
     
     print(f'Epoch [{epoch+1}/{epochs}], Validation Loss: {val_loss:.6f}')
@@ -425,3 +431,15 @@ for epoch in range(start_epoch, epochs):
     print(f"Checkpoint saved: {checkpoint_path}")   
 print('Finished Training')
 print(f"Best validation loss achieved: {best_val_loss:.6f}")
+
+plt.figure(figsize=(8, 6))
+plt.plot(range(start_epoch, start_epoch + epochs), train_losses, label='Training Loss', marker='o')
+plt.plot(range(start_epoch, start_epoch + epochs), val_losses, label='Validation Loss', marker='o')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Training and Validation Loss')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig(os.path.join(CHECKPOINT_DIR, 'loss_curve.png'))
+plt.show()

@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=3d_rgc_testing
-#SBATCH --output=/home/akaur101/data/3d_data/testing_outputs/3d_rgc_test_≈%j.stdout
+#SBATCH --output=/home/akaur101/data/3d_data/testing_outputs/3d_rgc_testing_v3_≈%j.stdout
 #SBATCH --partition dept.appliedmath
 #SBATCH --gres=gpu:2
 #SBATCH --time=48:00:00

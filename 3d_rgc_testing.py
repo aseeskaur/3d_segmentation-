@@ -53,8 +53,12 @@ test_image_swap = np.swapaxes(test_image, 0, 2)
 test_mask = io.imread(test_mask_path)
 test_mask_swap = np.swapaxes(test_mask, 0, 2)
 
-test_image_padded = np.pad(test_image_swap, 40, mode = 'constant')
-test_mask_padded = np.pad(test_mask_swap, 40, mode = 'constant')
+test_image_padded = np.pad(test_image_swap, 
+                          pad_width=((40, 40), (40, 40), (5, 5)),
+                          mode='constant')
+test_mask_padded = np.pad(test_mask_swap, 
+                         pad_width=((40, 40), (40, 40), (5, 5)),
+                         mode='constant')
 
 class ToTensorAndNormalize3D:
     def __init__(self, normalize=False):
@@ -148,7 +152,7 @@ class net(nn.Module):
 
 num = 5000
 
-np.random.seed(67)
+np.random.seed(30)
 
 # Randomly select voxel positions from unpadded image
 total_voxels = test_image_swap.size
@@ -165,7 +169,7 @@ centroid_df = pd.DataFrame({
 
 centroid_df['cord_x']= centroid_df['cord_x']+40
 centroid_df['cord_y']= centroid_df['cord_y']+40
-centroid_df['cord_z']= centroid_df['cord_z']+40
+centroid_df['cord_z']= centroid_df['cord_z']+5
 
 
 
@@ -247,7 +251,7 @@ transform = ToTensorAndNormalize3D(normalize=True)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 model  = net()
-model_path = "/home/akaur101/data/3d_data/checkpoints/best_model_3d_after_bal_swap_v2.pth"
+model_path = "/home/akaur101/data/3d_data/checkpoints/best_3d_model_fixed_padding.pth"
 
 checkpoint = torch.load(model_path, map_location=device)
 
@@ -354,7 +358,7 @@ while len(next_S) > 0:
                 #boundry check
                 if (40 <= x < test_image_padded.shape[0] -40 and 
                     40 <= y < test_image_padded.shape[1] - 40 and
-                    40 <= z < test_image_padded.shape[2] - 40):
+                    40 <= z < test_image_padded.shape[2] - 5):
 
                     point = (x,y,z)
                     #print("point: ", point)
@@ -382,7 +386,7 @@ print(f"Max overlaps per voxel: {count_map.max()}")
 
 #Remove padding to get back to original image size
 print("\nRemoving padding...")
-final_prob = averaged_prob[40:-40, 40:-40, 40:-40]
+final_prob = averaged_prob[40:-40, 40:-40, 5:-5]
 
 print(f"Final probability map shape: {final_prob.shape}")
 print(f"Original image shape: {test_image_swap.shape}")
@@ -400,3 +404,4 @@ output_dir.mkdir(exist_ok=True)
 print(f"\nSaving results to: {output_dir}")
 np.save(output_dir / "3d_probability_map.npy", final_prob)
 np.save(output_dir / "3d_binary_mask.npy", binary_mask)
+np.save(output_dir / "count_map.npy", count_map[40:-40, 40:-40, 40:-40])
