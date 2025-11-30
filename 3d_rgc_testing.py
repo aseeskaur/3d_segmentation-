@@ -358,7 +358,7 @@ while len(next_S) > 0:
                 #boundry check
                 if (40 <= x < test_image_padded.shape[0] -40 and 
                     40 <= y < test_image_padded.shape[1] - 40 and
-                    40 <= z < test_image_padded.shape[2] - 5):
+                    5 <= z < test_image_padded.shape[2] - 5):
 
                     point = (x,y,z)
                     #print("point: ", point)
@@ -404,4 +404,4 @@ output_dir.mkdir(exist_ok=True)
 print(f"\nSaving results to: {output_dir}")
 np.save(output_dir / "3d_probability_map.npy", final_prob)
 np.save(output_dir / "3d_binary_mask.npy", binary_mask)
-np.save(output_dir / "count_map.npy", count_map[40:-40, 40:-40, 40:-40])
+np.save(output_dir / "count_map.npy", count_map[40:-40, 40:-40, 5:-5])
